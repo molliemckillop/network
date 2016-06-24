@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+
+.node {
+  stroke: #000;
+  stroke-width: 1.5px;
+}
+
+.link {
+  stroke: #999;
+  stroke-width: 1.5px;
+}
+
+</style>
+<body>
+<script src="//d3js.org/d3.v3.min.js"></script>
+<script src="d3.min.js"></script>
+<script>
+
+var w = window.innerWidth,
+    h = window.innerHeight;
+
+var force = d3.layout.force()
+    .charge(-20)
+    .linkDistance(20)
+    .size([w, h]);
+
+
+var svg = d3.select("body").append("svg")
+    .attr("width", w)
+    .attr("height", h);
+
+function isNumber(n) {
+  return !isNaN(parseFloat(n)) && isFinite(n);
+} 
+
+d3.json("network.json", function(error, graph) {
+  
+
+  // Find blank links, which give the error
+   // "Uncaught TypeError: Cannot read property 'weight' of undefined"
+   graph.links.forEach(function(link, index, list) {
+       if (typeof graph.nodes[link.source] === 'undefined') {
+           console.log('undefined source', link);
+       }
+       if (typeof graph.nodes[link.target] === 'undefined') {
+           console.log('undefined target', link);
+       }
+   });
+
+
+  var nodeById = d3.map();
+
+  var min_score = 1;
+  var max_score = 5;
+
+  var color = d3.scale.linear()
+  .domain([1, 2, 3, 4, 5])
+  .range(["gray","blue", "turquoise", "red", "hotpink"]);
+  // gray = NA, blue = Sanders, light blue = Clinton, red = Trump, pink = Cruz
+
+  var default_node_color = "#ccc";
+
+  //var color = d3.scale.category10();
+
+/* var color = {
+          0 : ["Sanders","#1f77b4"],
+          1 : ["Clinton","#2ca02c"],
+          2 : ["Trump","#ff7f0e"],
+          3 : ["Cruz", "#00FFFF"]
+      };*/
+
+  graph.nodes.forEach(function(node) {
+    nodeById.set(node.id, node);
+  });
+
+  graph.links.forEach(function(link) {
+    link.source = nodeById.get(link.source);
+    link.target = nodeById.get(link.target);
+  });
+
+  force
+      .nodes(graph.nodes)
+      .links(graph.links)
+      .start();
+
+
+
+  var link = svg.selectAll(".link")
+      .data(graph.links)
+    .enter().append("line")
+      .attr("class", "link");
+ 
+
+  var tocolor = "fill";
+
+
+  var node = svg.selectAll(".node")
+      .data(graph.nodes)
+    .enter().append("circle")
+      .attr("class", "node")
+      .attr("r", 6)
+      .style(tocolor, function(d) { 
+  if (isNumber(d.topic) && d.topic>=0) return color(d.topic);
+  else return default_node_color; })
+      //.style("fill", function(d) { return color(d.topic); })
+      //.style("fill", function(d, i) { return color(d.topic); })
+      .call(force.drag);
+
+  // function resize() {
+  //   width = window.innerWidth, height = window.innerHeight;
+  //   svg.attr("width", width).attr("height", height);
+  //   force.size([width, height]).resume();
+  // }
+  
+  force.on("tick", function() {
+    link.attr("x1", function(d) { return d.source.x; })
+        .attr("y1", function(d) { return d.source.y; })
+        .attr("x2", function(d) { return d.target.x; })
+        .attr("y2", function(d) { return d.target.y; });
+
+    node.attr("cx", function(d) { return d.x; })
+        .attr("cy", function(d) { return d.y; });
+
+  // resize();
+  // d3.select(window).on("resize", resize);
+
+  });
+});
+
+
+
+
+</script>
